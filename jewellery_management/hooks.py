@@ -27,6 +27,11 @@ doc_events = {
     "Jewellery Order": {
         "before_delete": "jewellery_management.jewellery_management.stock_hooks.remove_order_from_kanban",
     },
+
+    "Worker Settlement": {
+        "validate": "jewellery_management.jewellery_management.settlement.validate_settlement",
+        "on_submit": "jewellery_management.jewellery_management.settlement.validate_settlement",
+    },
 }
 
 export_python_type_annotations = True
