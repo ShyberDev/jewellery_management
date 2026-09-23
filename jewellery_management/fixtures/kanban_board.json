@@ -1,0 +1,47 @@
+[
+ {
+  "columns": [
+   {
+    "column_name": "Advance Received",
+    "indicator": "Gray",
+    "order": "[]",
+    "status": "Active"
+   },
+   {
+    "column_name": "Ordered to Worker",
+    "indicator": "Blue",
+    "order": "[]",
+    "status": "Active"
+   },
+   {
+    "column_name": "Worker Finished",
+    "indicator": "Orange",
+    "order": "[\"JWO-2026-08-29-01\"]",
+    "status": "Active"
+   },
+   {
+    "column_name": "Received",
+    "indicator": "Purple",
+    "order": "[\"JWO-2026-08-29-01\"]",
+    "status": "Active"
+   },
+   {
+    "column_name": "Delivered",
+    "indicator": "Green",
+    "order": "[]",
+    "status": "Active"
+   }
+  ],
+  "docstatus": 0,
+  "doctype": "Kanban Board",
+  "field_name": "order_status",
+  "fields": "[\"customer\",\"item_summary\",\"order_date\",\"delivery_date\",\"grand_total\",\"balance_amount\"]",
+  "filters": null,
+  "kanban_board_name": "Jewellery Order Kanban",
+  "modified": "2026-08-29 18:39:46.964508",
+  "name": "Jewellery Order Kanban",
+  "private": 0,
+  "reference_doctype": "Jewellery Order",
+  "show_labels": 1
+ }
+]

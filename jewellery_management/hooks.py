@@ -32,3 +32,40 @@ doc_events = {
 
 export_python_type_annotations = True
 require_type_annotated_api_methods = True
+
+fixtures = [
+    {
+        "dt": "DocType",
+        "filters": [["module", "=", "Jewellery"]],
+    },
+    {
+        "dt": "Client Script",
+        "filters": [
+            [
+                "dt",
+                "in",
+                [
+                    "Jewellery Order",
+                    "Jewellery Opening Stock",
+                    "Jewellery Sales Invoice",
+                    "Jewellery Purchase Invoice",
+                    "Retail Stock Item",
+                ],
+            ]
+        ],
+    },
+    {"dt": "Report", "filters": [["module", "=", "Jewellery"]]},
+    {"dt": "Print Format", "filters": [["module", "=", "Jewellery"]]},
+    {
+        "dt": "Workflow",
+        "filters": [["document_type", "like", "Jewellery%"]],
+    },
+    {
+        "dt": "Kanban Board",
+        "filters": [["reference_doctype", "like", "Jewellery%"]],
+    },
+    {
+        "dt": "Custom Field",
+        "filters": [["dt", "like", "Jewellery%"]],
+    },
+]
