@@ -188,9 +188,8 @@ def get_data(from_date: str, to_date: str) -> dict:
     # cash / bank from ERPNext books (best effort)
     cash = bank = 0.0
     try:
-        company = frappe.defaults.get_default("company") or frappe.db.sql(
-            "SELECT name FROM tabCompany LIMIT 1"
-        )[0][0]
+        companies = frappe.db.sql("SELECT name FROM tabCompany")
+        company = companies[0][0] if companies else None
         bals = frappe.db.sql(
             """SELECT a.account_type, SUM(g.debit - g.credit) b
                FROM `tabGL Entry` g JOIN tabAccount a ON a.name = g.account
