@@ -7,6 +7,16 @@ app_license = "mit"
 
 use_json_request_body = True
 
+add_to_apps_screen = [
+    {
+        "name": "jewellery_management",
+        "logo": "/assets/jewellery_management/images/logo.svg",
+        "title": "Sri Sai Krishna Jewellery",
+        "route": "/app/jewellery-dashboard",
+        "sequence_id": 1,
+    }
+]
+
 app_include_js = [
     "/assets/jewellery_management/js/jewellery_kanban.js"
 ]
