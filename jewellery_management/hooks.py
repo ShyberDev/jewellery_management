@@ -26,7 +26,6 @@ doc_events = {
 
     "Jewellery Order": {
         "before_delete": "jewellery_management.jewellery_management.stock_hooks.remove_order_from_kanban",
-        "on_submit": "jewellery_management.jewellery_management.stock_hooks.create_order_stock_out_on_submit",
     },
 }
 
