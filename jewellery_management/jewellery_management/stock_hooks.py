@@ -349,13 +349,13 @@ def get_order_stock_candidates(order_name: str):
         if not row.item_name:
             continue
 
-        gross_weight = flt(
-            row.delivered_gross_weight
+        net_weight = flt(
+            row.delivered_net_weight
         )
 
-        if gross_weight <= 0:
+        if net_weight <= 0:
             frappe.throw(
-                f"Delivered Gross Weight is required "
+                f"Delivered Net Weight is required "
                 f"for order item {row.idx}."
             )
 
@@ -372,7 +372,7 @@ def get_order_stock_candidates(order_name: str):
                 "item_name": row.item_name,
                 "material": row.material,
                 "purity": row.purity,
-                "delivered_gross_weight": gross_weight,
+                "delivered_net_weight": net_weight,
                 "already_transferred": bool(
                     row.stock_transferred
                 ),
@@ -554,12 +554,12 @@ def send_items_to_retail_stock(
             )
 
         weight = flt(
-            row.delivered_gross_weight
+            row.delivered_net_weight
         )
 
         if weight <= 0:
             frappe.throw(
-                f"Delivered Gross Weight is required "
+                f"Delivered Net Weight is required "
                 f"for order item {row.idx}."
             )
 
@@ -701,12 +701,12 @@ def create_order_stock_out_on_submit(
             )
 
         weight = flt(
-            row.delivered_gross_weight
+            row.delivered_net_weight
         )
 
         if weight <= 0:
             frappe.throw(
-                f"Delivered Gross Weight is required "
+                f"Delivered Net Weight is required "
                 f"for order item {row.idx}."
             )
 
