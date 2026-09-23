@@ -87,5 +87,148 @@
   ],
   "snapshot_report": 0,
   "timeout": 0
+ },
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "default_letter_head": null,
+  "default_print_format": null,
+  "disable_prepared_report_automation": 0,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "doctype_to_sync": [],
+  "documentation_url": null,
+  "filters": [
+   {
+    "default": null,
+    "fieldname": "metal",
+    "fieldtype": "Select",
+    "label": "Metal",
+    "mandatory": 0,
+    "options": "\nGold\nSilver",
+    "wildcard_filter": 0
+   },
+   {
+    "default": null,
+    "fieldname": "hallmark_status",
+    "fieldtype": "Select",
+    "label": "Hallmark Status",
+    "mandatory": 0,
+    "options": "\nNot Hallmarked\nSent for Hallmark\nHallmarked",
+    "wildcard_filter": 0
+   },
+   {
+    "default": "Short View",
+    "fieldname": "view",
+    "fieldtype": "Select",
+    "label": "View",
+    "mandatory": 0,
+    "options": "Short View\nFull View",
+    "wildcard_filter": 0
+   }
+  ],
+  "generate_csv": 0,
+  "is_standard": "No",
+  "javascript": null,
+  "json": null,
+  "modified": "2026-09-24 00:45:57.151568",
+  "module": "Jewellery",
+  "name": "HUID Register",
+  "prepared_report": 0,
+  "query": "SELECT * FROM (\n    SELECT\n        rsi.name AS \"Stock ID:Link/Retail Stock Item:110\",\n        rsi.stock_item_name AS \"Item Name:Data:180\",\n        rsi.metal AS \"Metal:Data:70\",\n        rsi.purity AS \"Purity:Link/Metal Purity:110\",\n        rsi.hallmark_status AS \"Hallmark:Data:120\",\n        rsi.huid AS \"HUID:Data:130\",\n        ROUND(COALESCE(SUM(CASE WHEN rst.movement = 'In' THEN rst.weight ELSE 0 END), 0), 3) AS total_in,\n        ROUND(COALESCE(SUM(CASE WHEN rst.movement = 'Out' THEN rst.weight ELSE 0 END), 0), 3) AS total_out,\n        ROUND(COALESCE(SUM(CASE WHEN rst.movement = 'In' THEN rst.weight ELSE -rst.weight END), 0), 3) AS current_stock\n    FROM `tabRetail Stock Item` rsi\n    LEFT JOIN `tabJewellery Stock Transaction` rst\n      ON rst.retail_stock_item = rsi.name AND rst.docstatus = 1\n    WHERE (%(metal)s = '' OR rsi.metal = %(metal)s)\n      AND (%(hallmark_status)s = '' OR rsi.hallmark_status = %(hallmark_status)s)\n    GROUP BY rsi.name\n) t\nWHERE (%(view)s = 'Full View' OR t.current_stock > 0)\nORDER BY 3, 2\n",
+  "ref_doctype": "Retail Stock Item",
+  "reference_report": null,
+  "report_name": "HUID Register",
+  "report_script": null,
+  "report_type": "Query Report",
+  "roles": [
+   {
+    "role": "System Manager"
+   }
+  ],
+  "snapshot_report": 0,
+  "timeout": 0
+ },
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "default_letter_head": null,
+  "default_print_format": null,
+  "disable_prepared_report_automation": 0,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "doctype_to_sync": [],
+  "documentation_url": null,
+  "filters": [],
+  "generate_csv": 0,
+  "is_standard": "No",
+  "javascript": null,
+  "json": null,
+  "modified": "2026-09-24 00:46:18.883322",
+  "module": "Jewellery",
+  "name": "Worker Balances",
+  "prepared_report": 0,
+  "query": "SELECT\n    w.name AS \"Worker:Link/Worker:140\",\n    w.mobile_number AS \"Mobile:Data:120\",\n    (SELECT COUNT(*) FROM `tabJewellery Order` o WHERE o.worker = w.name AND o.docstatus < 2) AS \"Orders:Int:80\",\n    ROUND(COALESCE((SELECT SUM(pure_gold_delta) FROM `tabWorker Settlement` s WHERE s.worker = w.name AND s.docstatus = 1), 0), 3) AS \"Gold Bal (g):Float:110\",\n    COALESCE((SELECT SUM(cash_delta) FROM `tabWorker Settlement` s WHERE s.worker = w.name AND s.docstatus = 1), 0) AS \"Cash Bal:Currency:130\"\nFROM `tabWorker` w\nORDER BY 1",
+  "ref_doctype": "Worker Settlement",
+  "reference_report": null,
+  "report_name": "Worker Balances",
+  "report_script": null,
+  "report_type": "Query Report",
+  "roles": [
+   {
+    "role": "System Manager"
+   }
+  ],
+  "snapshot_report": 0,
+  "timeout": 0
+ },
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "default_letter_head": null,
+  "default_print_format": null,
+  "disable_prepared_report_automation": 0,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "doctype_to_sync": [],
+  "documentation_url": null,
+  "filters": [
+   {
+    "default": "Outstanding Only",
+    "fieldname": "show_settled",
+    "fieldtype": "Select",
+    "label": "Show Settled",
+    "mandatory": 0,
+    "options": "Outstanding Only\nAll",
+    "wildcard_filter": 0
+   }
+  ],
+  "generate_csv": 0,
+  "is_standard": "No",
+  "javascript": null,
+  "json": null,
+  "modified": "2026-09-24 00:46:18.922106",
+  "module": "Jewellery",
+  "name": "Customer Outstanding",
+  "prepared_report": 0,
+  "query": "SELECT * FROM (\nSELECT\n    si.customer_name AS \"Customer:Data:200\",\n    COUNT(*) AS \"Bills:Int:70\",\n    SUM(si.grand_total) AS \"Billed:Currency:130\",\n    SUM(si.total_paid) AS \"Paid:Currency:130\",\n    SUM(si.grand_total - si.total_paid) AS \"Outstanding:Currency:130\"\nFROM `tabJewellery Sales Invoice` si\nWHERE si.docstatus = 1\nGROUP BY si.customer_name\n) t\nWHERE (%(show_settled)s = 'All' OR t.`Outstanding:Currency:130` > 0)\nORDER BY 5 DESC",
+  "ref_doctype": "Jewellery Sales Invoice",
+  "reference_report": null,
+  "report_name": "Customer Outstanding",
+  "report_script": null,
+  "report_type": "Query Report",
+  "roles": [
+   {
+    "role": "System Manager"
+   }
+  ],
+  "snapshot_report": 0,
+  "timeout": 0
  }
 ]

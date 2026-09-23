@@ -32,6 +32,20 @@ doc_events = {
         "validate": "jewellery_management.jewellery_management.settlement.validate_settlement",
         "on_submit": "jewellery_management.jewellery_management.settlement.validate_settlement",
     },
+
+    "Old Gold Receipt": {
+        "validate": "jewellery_management.jewellery_management.old_gold.validate_receipt",
+        "on_submit": "jewellery_management.jewellery_management.old_gold.validate_receipt",
+    },
+
+    "Old Gold Melt": {
+        "validate": "jewellery_management.jewellery_management.old_gold.validate_melt",
+        "before_submit": "jewellery_management.jewellery_management.old_gold.validate_melt",
+    },
+
+    "Jewellery Repair": {
+        "validate": "jewellery_management.jewellery_management.workshop.validate_repair",
+    },
 }
 
 export_python_type_annotations = True
@@ -71,5 +85,9 @@ fixtures = [
     {
         "dt": "Custom Field",
         "filters": [["dt", "like", "Jewellery%"]],
+    },
+    {
+        "dt": "Workspace",
+        "filters": [["module", "=", "Jewellery Management"]],
     },
 ]
