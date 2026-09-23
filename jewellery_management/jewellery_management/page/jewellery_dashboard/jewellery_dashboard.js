@@ -23,8 +23,7 @@ frappe.pages["jewellery-dashboard"].on_page_load = function (wrapper) {
 		["Last 12 Months", () => [frappe.datetime.add_months(frappe.datetime.get_today(), -12), frappe.datetime.get_today()]],
 	];
 
-	let from_field = page.add_field({
-		fieldname: "from_date", label: __("From"), fieldtype: "Date",
+	let from_field = page.add_field({		fieldname: "from_date", label: __("From"), fieldtype: "Date",
 		default: frappe.datetime.month_start(), change: () => load("Custom"),
 	});
 	let to_field = page.add_field({
@@ -59,6 +58,7 @@ frappe.pages["jewellery-dashboard"].on_page_load = function (wrapper) {
 	}
 
 	function load(label) {
+		page._jm_label = label;
 		const args = { from_date: from_field.get_value(), to_date: to_field.get_value() };
 		body.html(`<p class="text-muted">Loading ${label}…</p>`);
 		frappe.call({
@@ -128,5 +128,13 @@ frappe.pages["jewellery-dashboard"].on_page_load = function (wrapper) {
 		}
 	}
 
+	page._jm_reload = () => load(page._jm_label || "This Month");
 	load("This Month");
+};
+
+frappe.pages["jewellery-dashboard"].on_page_show = function (wrapper) {
+	const page = wrapper.page;
+	if (page && page._jm_label) {
+		page._jm_reload && page._jm_reload();
+	}
 };
