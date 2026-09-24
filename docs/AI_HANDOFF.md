@@ -531,3 +531,32 @@ ERIONT, GehnaERP) to built / building / V2 / out-of-scope.
 
 - **F. New reports**: Daily Sales Summary, Supplier Payable, Stock Ageing, Item Rate Card,
   default GST-rate pre-fill.
+
+- **G. Desk navigation: persistent Jewellery sidebar + Modules rail — ✅ DONE**
+  - Reported bug: the sectioned nav (Counter / Orders & Workers / Stock &
+    Hallmark / Masters) + FIFO Metal Ledger + Sri Sai Krishna dashboard only
+    showed on the workspace page and vanished when entering a doctype form
+    (`/desk/jewellery-order?name=...`); modules were not reachable.
+  - Root cause: workspace "Jewellery" carried all navigation as HTML `content`
+    blocks only; v17 `sidebar_items` (the child table that drives the left desk
+    sidebar) was empty. The sidebar fell back to auto-generated module sidebars
+    ("jewellery" → 3 doctypes + 5 reports; "jewellery management" → FIFO +
+    dashboard), so opening a doctype switched to the wrong shell and the app was
+    app-less (no header/app context, no modules in the dock).
+  - Fix (DB + `fixtures/workspace.json`): authored 27 `sidebar_items` rows —
+    Home, Sri Sai Krishna Dashboard (Page), and collapsible sections
+    Counter / Orders & Workers / Stock & Hallmark / Masters — with
+    `default_workspace=1` on every Jewellery entity item. The boot
+    `default_workspace_map` now owns each Jewellery doctype/report/page to
+    workspace "Jewellery", so the full nav persists on every list/form/report/
+    workspace page; the generated fallback sidebars are suppressed (single
+    authored "jewellery" payload, module "Jewellery Management"). Order Kanban is
+    a URL item (`/app/kanban/Jewellery Order Kanban`, `open_in_new_tab=0`).
+  - Modules rail: pinned `User.workspaces` (Administrator + Shyam) to a curated
+    module list (Jewellery, Invoicing, Payments, Accounting, Financial Reports,
+    Buying, Selling, Stock, Manufacturing, Projects, System, Users, Build) so the
+    left workspace dock always shows the modules. DB-only user data (not a
+    fixture), like kanban positions.
+  - Verified against the boot payload: one "jewellery" sidebar with all 27 items;
+    default map routes every Jewellery entity → "Jewellery"; `user_workspaces`
+    list intact. No schema/server changes; fixtures re-exported and committed.
