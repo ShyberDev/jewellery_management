@@ -752,10 +752,20 @@ public push on the suite branch **`Frappe Jewellery, Pawn & Lending Suite`**
 - **`README.md`** — short landing page that points to `README_FIRST.md` and
   gives the quick start.
 
-**Push status:** the `origin` remote is already
-`https://github.com/ShyberDev/jewellery_management.git`, but this machine has
-**no stored credentials** (no `gh`, no PAT, no SSH key), so the push must be done
-by the owner with a token, e.g.:
-`git push https://<PAT>@github.com/ShyberDev/jewellery_management.git "opencode/v1-complete-erp:Frappe Jewellery, Pawn & Lending Suite"`.
-`pawn_shop` still needs its own GitHub repo (`ShyberDev/pawn_shop`) before
-strangers can `bench get-app` it.
+**Push status (DONE, owner-authorized):** on the owner's explicit instruction,
+`opencode/v1-complete-erp` was pushed to the new remote branch
+**`Frappe-Jewellery-Pawn-Lending-Suite`** of
+`https://github.com/ShyberDev/jewellery_management` (a **private** repo).
+Remote branch HEAD `1cb50f75aeb6def6d67e4bbed5679d61da41c312` == local. The token
+used for the push was **not** stored in git config, and the temporary askpass
+script was deleted. **The owner should revoke/rotate that PAT** (it was shared in
+chat).
+
+`pawn_shop` is prepared (remote set to
+`https://github.com/ShyberDev/pawn_shop.git`, README added, branch `develop`) but
+**cannot be pushed yet**: `ShyberDev/pawn_shop` does not exist and the fine-grained
+PAT lacked the **Administration** permission to create repos (API returned 403).
+Owner action: create the empty repo at https://github.com/new (name `pawn_shop`,
+private to match), then either re-run the push with a token that has write access
+or run:
+`git push https://<PAT>@github.com/ShyberDev/pawn_shop.git develop`.
