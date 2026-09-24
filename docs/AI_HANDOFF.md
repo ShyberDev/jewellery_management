@@ -17,14 +17,16 @@ Anything not verified is explicitly marked NOT VERIFIED or as an assumption.
 - **Frappe:** `17.x.x-develop` (commit `8a43de0`), branch `develop`
 - **ERPNext:** `17.x.x-develop` (commit `8c24c5b`), branch `develop`
 - **jewellery_management:** version `0.0.1` (from `jewellery_management/__init__.py`), branch `develop`
-- **Current Git commit (HEAD):** `df135a2` — "fix: dashboard refresh on return + working cash/bank"
+- **Current Git commit (HEAD):** `42c1de0` — "docs: update AI handoff brick tracker" (branch `opencode/v1-complete-erp`; Brick A `c66290f`, B `60b0825`, C `5763ea4`, D `a8f6371`, G `9f56721`, kanban fix `9922ca8`, E+F `287b872`)
 - **Remote:** `https://github.com/ShyberDev/jewellery_management.git` (fetch + push)
 - **Push status:** NOT VERIFIED whether remote contains these commits. No push was
   performed during this session (explicit owner instruction: never push; GitHub is backup only).
 - **Working tree:** CLEAN at handoff creation (verified `git status --short` → empty;
   the only new file after that check is this `docs/AI_HANDOFF.md` itself, intentionally uncommitted).
-- **Installed apps on site:** `['frappe', 'erpnext', 'jewellery_management']`
+- **Installed apps on site:** `['erpnext', 'frappe', 'jewellery_management', 'lending', 'pawn_shop']`
   (`library_management` exists in `apps/` but is NOT installed on this site).
+  `lending` = frappe/lending integration (Money Lending desk app); `pawn_shop` =
+  custom Pawn Shop + Khatabook app. See §18.
 - **DB:** MariaDB (credentials encountered during work — [SECRET/ CREDENTIAL OMITTED]).
 - **Developer mode:** ON (`developer_mode: 1` in `common_site_config.json`).
 - **Module ownership anomaly (important):** all 24 custom DocTypes have
@@ -389,7 +391,10 @@ for bank legs); village-wise analytics.
 ## 14. GIT STATE
 
 - Current branch: `opencode/v1-complete-erp`
-- Current commit: Brick C commit (Brick B was `60b0825`, Brick A `c66290f`)
+- Current commit: `42c1de0` docs update; before it Bricks E+F `287b872`, D `a8f6371`,
+  G `9f56721`, kanban fix `9922ca8` (A `c66290f`, B `60b0825`, C `5763ea4`).
+  New apps are separate repos: `apps/pawn_shop` (branch `develop`, commit `48550ea`);
+  `apps/lending` is an upstream checkout.
 - Remote: `https://github.com/ShyberDev/jewellery_management.git` (push NOT performed; remote state NOT VERIFIED)
 - Working tree: CLEAN after Brick C commit. `docs/AI_HANDOFF.md` is tracked (updated in-session each brick).
 
@@ -421,6 +426,9 @@ repairs, rates, roles, workspace, home tile + live dashboard. Server-side totals
 (Brick A) live on all 4 billing DocTypes; 24 custom DocTypes, 5 reports, all
 fixture-versioned on `opencode/v1-complete-erp`, tree clean, sample data in place and
 reconciled to the current client math, ERP core untouched, nothing pushed.
+Plus two desk apps (session 2): **Money Lending** (frappe/lending) and custom
+**Pawn Shop + Khatabook** (`apps/pawn_shop`, branch `develop`, commit `48550ea`) with
+6 reports and combined 3-business accounting — see §18.
 
 ## LAST COMPLETED TASK
 Bricks D/E/F complete. D: Sales/Purchase Returns with stock reversal (commit
@@ -430,20 +438,14 @@ Supplier Payable, Jewellery Stock Ageing, Item Rate Card) + default GST-rate
 pre-fill (commit `287b872`). Kanban board made code-defined (`9922ca8`).
 
 ## CURRENT UNFINISHED TASK
-Owner requested two new desk apps:
-1. **Money Lending** — integrate https://github.com/frappe/lending.
-2. **Pawn Shop + Khatabook lending** — custom app: customer (village/address/
-   phone, rate overrides), pawn items + weight, capital paid, interest 3%/mo gold
-   + 4%/mo silver with per-customer overrides, gold/silver/weight valuations,
-   hallmarked vs non-hallmarked split, release/withdrawal (principal+interest),
-   month-wise P&L + graph; Khatabook 12-weekly collections (e.g. 5000 principal
-   + 1000 interest = 12×500), irregular-payment tracking, good/bad customer
-   rating, refinance of balance at flexible interest; combined accounting across
-   shop+lending+pawn with per-business isolation.
+None — both requested desk apps are installed and verified. Awaiting owner's
+modification/improvement list before any further work (see §18 for details).
 
 ## NEXT ACTION
-Install frappe/lending (`bench get-app` + `install-app lending`), verify app/module
-shows in desk and jewellery DB intact; then scaffold the custom pawn app.
+Owner verifies in the desk (`/desk`): apps screen shows **Lending** and **Pawn Shop**;
+left workspace rail shows **Jewellery**, **Lending**, **Pawn** (pinned for both
+Administrator and `shyamsailolugu@gmail.com`). Then owner dictates changes.
+Do NOT push to GitHub. Do NOT re-run `sync_for(force=True)` on pawn_shop (see §18 warning).
 
 ## IMPORTANT WARNINGS
 - `bench migrate` reimports fixtures and SILENTLY reverts unexported DB work.
@@ -590,3 +592,90 @@ ERIONT, GehnaERP) to built / building / V2 / out-of-scope.
   - Verified against the boot payload: one "jewellery" sidebar with all 27 items;
     default map routes every Jewellery entity → "Jewellery"; `user_workspaces`
     list intact. No schema/server changes; fixtures re-exported and committed.
+
+---
+
+## 18. NEW DESK APPS (owner request, session 2)
+
+Two additional desk apps were requested and delivered alongside the jewellery app.
+Neither touches `apps/frappe`, `apps/erpnext`, `apps/library_management`, or the
+jewellery fixtures. Nothing pushed.
+
+### 18.1 Installed applications (site `library.local`)
+`frappe`, `erpnext`, `jewellery_management`, `lending` (17.0.0-dev), `pawn_shop`.
+
+### 18.2 Money Lending — frappe/lending integration
+- Installed via `bench get-app https://github.com/frappe/lending` +
+  `bench --site library.local install-app lending`. `install-app` runs a scoped
+  `sync_for`/`sync_fixtures`, not a full migrate — jewellery DB verified intact.
+- Provides modules `Loan Origination`, `Loan Management`, public workspace
+  `Lending`, 35 sidebar items, 13 number cards, 4 charts.
+- `Lending` pinned in `User.workspaces` for Administrator and
+  `shyamsailolugu@gmail.com`; `Loan Manager` role granted to the owner user and
+  `System Manager` added to the `Lending` workspace roles (DB-only user/role data)
+  so the workspace is visible to both accounts. Route: `/app/lending`.
+
+### 18.3 Pawn Shop + Khatabook — custom app `pawn_shop`
+- Own git repo `apps/pawn_shop`, branch `develop`, license `mit`, commit
+  `48550ea` (local only). Module **"Pawn Shop"**. Route `/app/pawn`. Logo
+  `/assets/pawn_shop/images/pawn.svg` (built via `bench build --app pawn_shop`).
+- **11 DocTypes:** Business, Village, Pawn Customer (naming `PC-.YYYY.-.#####`,
+  shared by pawn + khatabook), Pawn Settings (Single), Pawn Item (child),
+  Pawn Loan (`PL-`), Pawn Release (`PR-`, submittable), Khatabook Installment
+  (child), Khatabook Loan (`KL-`), Khatabook Collection (`KC-`, submittable),
+  Khatabook Refinance (`KR-`, submittable).
+- **Rounding contract** mirrors jewellery: `pawn_shop/utils.py` `money` = ceil,
+  `round3`/`round2`/`round_pct` = half-up (Decimal, never Python `round`).
+- **Interest:** simple `loan_amount × rate%/month × (days/30)`, money ceil; rate
+  default = Pawn Customer override, else Pawn Settings (gold 3%/mo, silver 4%/mo).
+- **Pawn Loan:** multiple items (metal, hallmarked yes/no, gross/net weight,
+  valuation), market valuation from `Metal Rate` master (latest active rate_date,
+  fallback to Settings), LTV, balance = principal + accrued interest − payments.
+  **Pawn Release** submittable: pays principal + interest → loan `Released`,
+  balance 0.
+- **Khatabook:** `installment_amount = ceil(total_payable / count)`; weekly due
+  dates (e.g. 5000 principal + 1000 interest = 12 × 500). **Khatabook Collection**
+  `on_submit` allocates oldest-first, flags `is_irregular` (late or partial).
+  **Khatabook Refinance** closes the old loan (status `Closed`) and creates a new
+  loan with principal = old outstanding, `refinanced_from` set, flexible interest.
+- **6 Script Reports** (module "Pawn Shop", file-defined):
+  Pawn Monthly Profit and Loss (chart), Pawn Valuation, Pawn Outstanding,
+  Khatabook Collection Sheet, Khatabook Outstanding, Combined Business Profit and
+  Loss (chart). Names deliberately avoid `&` (frappe report module path =
+  `frappe.scrub(name)`; `&` breaks the Python import).
+- **Combined accounting:** `Business` master types Shop / Money Lending / Pawn /
+  Khatabook; Combined Business Profit and Loss aggregates shop (JSI/JPI),
+  lending (`Loan`/`Loan Repayment`, defensive import), pawn, khatabook with a
+  TOTAL row. Verified: shop income ₹22,13,087 / purchases ₹33,66,397 (matches
+  jewellery baselines), pawn principal ₹1,50,000, khatabook ₹9,700.
+- **Scheduler:** `pawn_shop.tasks.mark_overdue_loans` daily.
+- **Workspace:** `Pawn` with 4 cards + 20 `sidebar_items`; boot
+  `default_workspace_map` routes all Pawn entities → `Pawn`. Pinned in
+  `User.workspaces` for both accounts (order Jewellery, Lending, Pawn, …).
+- **Sample data** created and marked "SAMPLE DATA" (kept for owner verification):
+  e.g. `PL-2026-00002` active (gold non-hallmarked 25g + silver hallmarked 200g,
+  market ₹4,38,000, LTV 22.83, balance ₹1,01,500); collection ₹550 on
+  `KL-2026-00002`.
+
+### 18.4 End-to-end verification (all PASS)
+- Apps screen (`frappe.apps.get_apps`): ERPNext, Sri Sai Krishna Jewellery,
+  Lending (`/app/lending`), Pawn Shop (`/app/pawn`). Logo asset serves HTTP 200.
+- Desk routes `/app/pawn`, `/app/lending`, `/app/jewellery`, `/login` → HTTP 200.
+- 30/30 pawn/khatabook flow tests (defaults, interest, release, 12× schedule,
+  regular + irregular collections, refinance, all reports).
+- All 6 reports run through the real `frappe.desk.query_report.run` API with
+  charts; Pawn Valuation splits gold non-hallmarked / silver hallmarked correctly.
+- Jewellery DB intact after all installs: JST submitted 31, JSI 22, JPI 18,
+  Order 18, kanban board + `field_name` intact, workspace 27 sidebar items.
+
+### 18.5 ⚠️ WARNING — pawn_shop workspace source file
+A **forced** re-import of a Workspace (`frappe.model.sync.sync_for(app, force=True)`
+on an already-existing workspace) deletes the workspace's own source folder:
+`import_doc` → `delete_old_doc` → `frappe.delete_doc(..., for_reload=True)` →
+`Workspace.after_delete` → `delete_folder` (dev mode), and the subsequent
+re-insert skips export because `frappe.flags.in_import` is set. This is a Frappe
+behaviour, not an app bug. `bench migrate` calls `sync_all()` with `force=0`, which
+skips the import by timestamp, so it is safe. **After any forced sync, regenerate
+`apps/pawn_shop/pawn_shop/pawn_shop/workspace/pawn/pawn.json`** (generator
+`/tmp/opencode/gen_pawn_workspace.py`) before committing. The same applies to any
+app-shipped workspace.
