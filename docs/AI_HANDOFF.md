@@ -731,3 +731,31 @@ against the lucide sprite; `default_workspace_map` routes lending + pawn +
 jewellery entities correctly. Desk routes `/app/pawn`, `/app/lending`,
 `/app/jewellery` → HTTP 200. **Owner must hard-refresh the browser** (the boot
 payload is cached per page load).
+
+### 18.7 README FIRST (GitHub onboarding) — branch `Frappe Jewellery, Pawn & Lending Suite`
+The repo `https://github.com/ShyberDev/jewellery_management` is prepared for a
+public push on the suite branch **`Frappe Jewellery, Pawn & Lending Suite`**
+(slug `Frappe-Jewellery-Pawn-Lending-Suite`). Two new top-level docs were added:
+
+- **`README_FIRST.md`** — the full "read this first" onboarding guide: the exact
+  daily commands (`sudo systemctl start mariadb` → `cd ~/frappe-bench` →
+  `bench start` → `http://library.local:8000/desk`), the **tested system
+  configuration** (Kali GNU/Linux Rolling, Python 3.14.6, Node v24.18.0, Bench
+  5.31.0, Frappe/ERPNext 17.0.0-dev, MariaDB 11.8.8, Redis 8.0.6, ports
+  8000/9000/13000/11000), install-from-scratch (Frappe framework first) vs
+  adding to an existing bench, why a single "install file" is impossible and how
+  to ship a complete VM/Docker/backup image for non-technical users, the §7
+  sidebar/app-context fix (standard=1 + valid lucide icons + authored
+  `sidebar_items`), the forced-sync workspace-file trap, feature lists for all
+  three apps, combined accounting, advantages of the open-source stack, known
+  issues, and backup/restore.
+- **`README.md`** — short landing page that points to `README_FIRST.md` and
+  gives the quick start.
+
+**Push status:** the `origin` remote is already
+`https://github.com/ShyberDev/jewellery_management.git`, but this machine has
+**no stored credentials** (no `gh`, no PAT, no SSH key), so the push must be done
+by the owner with a token, e.g.:
+`git push https://<PAT>@github.com/ShyberDev/jewellery_management.git "opencode/v1-complete-erp:Frappe Jewellery, Pawn & Lending Suite"`.
+`pawn_shop` still needs its own GitHub repo (`ShyberDev/pawn_shop`) before
+strangers can `bench get-app` it.
