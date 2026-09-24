@@ -761,11 +761,13 @@ used for the push was **not** stored in git config, and the temporary askpass
 script was deleted. **The owner should revoke/rotate that PAT** (it was shared in
 chat).
 
-`pawn_shop` is prepared (remote set to
-`https://github.com/ShyberDev/pawn_shop.git`, README added, branch `develop`) but
-**cannot be pushed yet**: `ShyberDev/pawn_shop` does not exist and the fine-grained
-PAT lacked the **Administration** permission to create repos (API returned 403).
-Owner action: create the empty repo at https://github.com/new (name `pawn_shop`,
-private to match), then either re-run the push with a token that has write access
-or run:
-`git push https://<PAT>@github.com/ShyberDev/pawn_shop.git develop`.
+**pawn_shop (DONE, owner-authorized):** the owner requested a repo named
+"Jew_Pawn & Lending Suite". GitHub does not allow spaces/`&` in repo names, so it
+was created as **`ShyberDev/Jew_Pawn-Lending-Suite`** (private, default branch
+`develop`) and the `pawn_shop` app was pushed there (`develop` HEAD
+`cd0ad7457ae8faafa8742fe8122b309070dbecfe`). Its `bench get-app` URL is now
+`https://github.com/ShyberDev/Jew_Pawn-Lending-Suite --branch develop`.
+**The owner should revoke/rotate this second PAT too.**
+
+Both repos are private. To let others `bench get-app` them, either make them
+public or grant collaborator access.

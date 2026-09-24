@@ -212,16 +212,14 @@ bench get-app https://github.com/ShyberDev/jewellery_management --branch "Frappe
 # 2) Money Lending (official Frappe app)
 bench get-app https://github.com/frappe/lending
 
-# 3) Pawn Shop  (custom app — see note below)
-#    The pawn_shop app is currently a LOCAL git repository (no public remote).
-#    Either copy the `pawn_shop` folder into ~/frappe-bench/apps/pawn_shop,
-#    or push it to its own GitHub repo and then:
-# bench get-app https://github.com/<you>/pawn_shop
+# 3) Pawn Shop  (custom app — hosted in the Jew_Pawn-Lending-Suite repo)
+bench get-app https://github.com/ShyberDev/Jew_Pawn-Lending-Suite --branch develop
 ```
 
-> **Note for the owner:** `pawn_shop` needs its own GitHub repository (e.g.
-> `https://github.com/ShyberDev/pawn_shop`) before a stranger can `bench get-app`
-> it. Until then, distribute the `apps/pawn_shop` folder directly.
+> **Note:** `pawn_shop` lives in the repo
+> `https://github.com/ShyberDev/Jew_Pawn-Lending-Suite` (branch `develop`), whose
+> app folder is `pawn_shop`. The repo is currently **private**; make it public (or
+> grant access) before others can `bench get-app` it.
 
 ### 5.3 Create a site and install the apps
 
@@ -526,8 +524,8 @@ These are honest, known limitations. None block daily use; they are the roadmap.
 **Suite / ops**
 15. **No prebuilt Docker/VM image yet** — new users must install Frappe
     themselves (see §3 Option C, §12).
-16. `pawn_shop` has **no public GitHub remote** yet — distribute the folder or
-    push it to its own repo.
+16. The `pawn_shop` repo (`ShyberDev/Jew_Pawn-Lending-Suite`) is **private** —
+    make it public or grant access before others can `bench get-app` it.
 17. The Lending workspace patch lives in the third-party `apps/lending` checkout;
     a future `bench get-app`/update of lending would drop it. A normal
     `bench migrate` keeps it (sync skips by timestamp).
@@ -599,9 +597,11 @@ Until one of these ships, the honest answer to "can I just install one file?" is
 
 | Repo | Branch | Contents |
 |------|--------|----------|
-| `ShyberDev/jewellery_management` | **`Frappe Jewellery, Pawn & Lending Suite`** | Jewellery ERP app + this README + `docs/AI_HANDOFF.md` |
-| `ShyberDev/pawn_shop` *(to be created)* | `develop` | Pawn Shop + Khatabook app |
+| `ShyberDev/jewellery_management` | **`Frappe-Jewellery-Pawn-Lending-Suite`** | Jewellery ERP app + this README + `docs/AI_HANDOFF.md` |
+| `ShyberDev/Jew_Pawn-Lending-Suite` | `develop` | Pawn Shop + Khatabook app |
 | `frappe/lending` *(upstream)* | `develop` | Money Lending app (install from upstream) |
+
+All three repos are currently **private**.
 
 > Branch names with spaces/commas are allowed by git but awkward in URLs. The
 > machine-friendly slug is `Frappe-Jewellery-Pawn-Lending-Suite`; use whichever
