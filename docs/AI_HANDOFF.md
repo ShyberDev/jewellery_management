@@ -330,7 +330,8 @@ Old Gold Receipt, Old Gold Melt (+Item child), Jewellery Repair, Jewellery Setti
 10. **Workflow `Jewellery Order Workflow` inactive** + orphan `workflow_state` field.
 11. **Silver Metal Rate 240/g entered; 18K rate missing** (owner to provide; ~11700 est. NOT entered).
 12. **Sample Bank reads −₹20,000** (samples overpaid — data artifact, math correct).
-13. **No returns flow, no e-invoice/TCS, no FIFO auto, no fresh-install proof.**
+13. **No FIFO auto-allocation, no fresh-install proof.** Returns (Brick D),
+    e-invoice/TCS/GSTR-1 (Brick E) and the 4 new reports (Brick F) are DONE.
 14. **Frappe/ERPNext on `develop` (17.0.0-dev)** — upstream churn risk; pin before go-live.
 
 ---
@@ -422,23 +423,27 @@ fixture-versioned on `opencode/v1-complete-erp`, tree clean, sample data in plac
 reconciled to the current client math, ERP core untouched, nothing pushed.
 
 ## LAST COMPLETED TASK
-Brick C (FIFO metal ledger): new `fifo.py` runs FIFO over the submitted JST ledger
-per (Retail Stock Item, Purity) bucket — IN rows open lots, OUT rows consume oldest
-lot first; realised P&L = OUT stock_value − FIFO cost; book value = open lots at
-purchase cost; provisional P&L = open × (current metal rate − lot rate). Standard
-Script Report "FIFO Metal Ledger" (file-defined under module "Jewellery Management",
-13 columns + bucket/grand totals) with as_of / item / purity filters. Verified:
-per-bucket open == `get_available_stock`; gold 111.11g / silver 650g; book+provisional
-== ₹18,89,316 exactly (== dashboard stock_value); realised ₹1,43,484 line-checked.
+Bricks D/E/F complete. D: Sales/Purchase Returns with stock reversal (commit
+`a8f6371`). E: TCS on sales over threshold + GSTR-1 export + e-invoice payload
+(`gst.py`, commit `287b872`). F: 4 new Script Reports (Daily Sales Summary,
+Supplier Payable, Jewellery Stock Ageing, Item Rate Card) + default GST-rate
+pre-fill (commit `287b872`). Kanban board made code-defined (`9922ca8`).
 
 ## CURRENT UNFINISHED TASK
-Brick D: Sales/Purchase Returns with stock reversal (return JSTs or reversed
-movements, RMA-ish flow). Then Brick E (e-invoice/TCS/GSTR-1) and Brick F (reports).
+Owner requested two new desk apps:
+1. **Money Lending** — integrate https://github.com/frappe/lending.
+2. **Pawn Shop + Khatabook lending** — custom app: customer (village/address/
+   phone, rate overrides), pawn items + weight, capital paid, interest 3%/mo gold
+   + 4%/mo silver with per-customer overrides, gold/silver/weight valuations,
+   hallmarked vs non-hallmarked split, release/withdrawal (principal+interest),
+   month-wise P&L + graph; Khatabook 12-weekly collections (e.g. 5000 principal
+   + 1000 interest = 12×500), irregular-payment tracking, good/bad customer
+   rating, refinance of balance at flexible interest; combined accounting across
+   shop+lending+pawn with per-business isolation.
 
 ## NEXT ACTION
-Brick D — decide return semantics (counter-entry JST vs negative movements;
-purchase return returns metal to supplier, sales return takes metal back), then
-implement + verify a sample return cycle end-to-end.
+Install frappe/lending (`bench get-app` + `install-app lending`), verify app/module
+shows in desk and jewellery DB intact; then scaffold the custom pawn app.
 
 ## IMPORTANT WARNINGS
 - `bench migrate` reimports fixtures and SILENTLY reverts unexported DB work.
@@ -525,12 +530,37 @@ ERIONT, GehnaERP) to built / building / V2 / out-of-scope.
     on the same bucket. Drafts/cancels excluded (docstatus=1 only). Rounding:
     weights half-up 3dp, money half-up 2dp (Decimal, never Python round).
 
-- **D. Sales/Purchase Returns** with stock reversal.
+- **D. Sales/Purchase Returns** with stock reversal — ✅ DONE (commit `a8f6371`)
+  - JST `transaction_type` extended with `Sale Return` / `Purchase Return`.
+  - JSI/JPI: `is_return`, `return_against`, `return_reason`, `returned_amount`
+    custom fields; client + server clamp so old-gold credit never exceeds the
+    original bill; return invoices never carry TCS; stock reversal via
+    `reverse_stock_transactions` on cancel.
 
-- **E. GST filing**: TCS on sales (> threshold), GSTR-1 export, e-invoice JSON payload.
+- **E. GST filing** — ✅ DONE (commit `287b872`)
+  - Jewellery Settings: `gstin`, `business_state`, `tcs_rate` (0.1%),
+    `tcs_threshold` (₹5,00,000).
+  - JSI: `tcs_rate`, `tcs_amount`, `hsn_code` (default 7113).
+  - `calculations.py` `_compute_tcs_amount`: `ceil(grand_total × rate%)` above
+    threshold; returns never carry TCS; `grand_total` intentionally EXCLUDES TCS
+    (kept goods-value to protect existing dashboard/payment math).
+  - Client TCS mirror + boot props `jewellery_settings_tcs_threshold/_rate`
+    via `boot_session` hook.
+  - `gst.py`: `gstr1_export(from,to)` → B2B/B2C/summary aggregation;
+    `einvoice_payload(invoice)` → IRN-style JSON.
+  - Verified: 937300→938, small→0, return→0; GSTR-1 Aug-2026 b2b 0 / b2c 2 /
+    summary rate 3.0 taxable 239250 cgst 3589 sgst 3589; e-invoice payload
+    builds for JSI-2026-09-24-17; validate-path TCS 1,400,800→1401 correct.
 
-- **F. New reports**: Daily Sales Summary, Supplier Payable, Stock Ageing, Item Rate Card,
-  default GST-rate pre-fill.
+- **F. New reports** — ✅ DONE (commit `287b872`)
+  - Script Reports, module **"Jewellery Management"** (file-defined, DB row
+    inserted directly like FIFO): **Daily Sales Summary**, **Supplier Payable**,
+    **Jewellery Stock Ageing** (renamed to avoid core Stock Ageing collision),
+    **Item Rate Card** (reuses `fifo.get_current_metal_rates`).
+  - Default GST-rate pre-fill from Jewellery Settings on new JSI/JPI
+    (`prefill_gst_rate` in both client scripts).
+  - Verified: daily Aug total grand 246428; supplier payable OK; stock ageing
+    grand weight 1238.81 / value 2970735; item rate card 16 rows.
 
 - **G. Desk navigation: persistent Jewellery sidebar + Modules rail — ✅ DONE**
   - Reported bug: the sectioned nav (Counter / Orders & Workers / Stock &
