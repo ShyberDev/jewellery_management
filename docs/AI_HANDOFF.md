@@ -353,8 +353,9 @@ Old Gold Receipt, Old Gold Melt (+Item child), Jewellery Repair, Jewellery Setti
 
 ## 12. DEFERRED WORK
 
-**Priority 1:** FIFO auto-allocation (+ realized vs provisional profit); server-side mirrors
-of order/invoice totals; stock-transaction submit flow + backfill; cancel/amend reversals.
+**Priority 1:** ~~server-side mirrors of order/invoice totals~~ ✅ DONE (Brick A, see §17);
+FIFO auto-allocation (+ realized vs provisional profit); stock-transaction submit flow +
+backfill; cancel/amend reversals.
 **Priority 2:** Sales/purchase returns; e-invoice + TCS; GSTR-1 filing format; barcode
 scan-to-bill; rate-lock at bill start; login-as-role permission proof; Settings defaults
 save; 18K rate entry (owner); legal-name confirmation (owner).
@@ -371,26 +372,25 @@ for bank legs); village-wise analytics.
 ## 13. NEXT AGENT INSTRUCTIONS
 
 1. Read this file fully, then `git -C apps/jewellery_management status` and
-   `git log --oneline -5` — expect clean tree at `df135a2`.
+   `git log --oneline -5` — expect clean tree on `opencode/v1-complete-erp` at the
+   Brick A commit.
 2. Change nothing until you reproduce: `bench --site library.local execute`
    dashboard `get_data` smoke test (§7) and confirm fixtures match DB for anything
    you plan to touch.
 3. Inspect first: `jewellery_management/hooks.py`,
-   `.../jewellery_management/{stock_hooks,settlement,old_gold,dashboard}.py`,
+   `.../jewellery_management/{calculations,stock_hooks,settlement,old_gold,dashboard}.py`,
    `fixtures/doctype.json` (source of truth for schema), open `Page: jewellery-dashboard`.
 4. Never run `migrate` with unexported DB changes (§10.4). Never push.
-5. Continue from §12 Priority 1 unless the owner redirects.
+5. Continue from §17 Brick B (stock submit + reversal flow).
 
 ---
 
 ## 14. GIT STATE
 
-- Current branch: `develop`
-- Current commit: `df135a2` ("fix: dashboard refresh on return + working cash/bank")
+- Current branch: `opencode/v1-complete-erp`
+- Current commit: Brick A commit (see log; was `b1a18c5` before this session)
 - Remote: `https://github.com/ShyberDev/jewellery_management.git` (push NOT performed; remote state NOT VERIFIED)
-- Working tree: CLEAN except this untracked file:
-- Untracked files: `docs/AI_HANDOFF.md` (app-relative; this file — DO NOT COMMIT unless owner asks)
-- Modified files: none. Staged files: none. Stash: empty (verified `stash list` → no output).
+- Working tree: CLEAN after Brick A commit. `docs/AI_HANDOFF.md` is now tracked (updated in-session).
 
 ---
 
@@ -416,28 +416,66 @@ for bank legs); village-wise analytics.
 ## CURRENT PROJECT STATE
 Working single-shop Jewellery ERP: orders→workers→settlement, purchases/sales with
 GST incl. 0%, custom weight-based stock ledger, old-gold two-leg flow, HUID registry,
-repairs, rates, roles, workspace, home tile + live dashboard. 24 custom DocTypes,
-5 reports, all fixture-versioned on `develop` @ `df135a2`, tree clean, sample data
-in place, ERP core untouched, nothing pushed.
+repairs, rates, roles, workspace, home tile + live dashboard. Server-side totals mirror
+(Brick A) live on all 4 billing DocTypes; 24 custom DocTypes, 5 reports, all
+fixture-versioned on `opencode/v1-complete-erp`, tree clean, sample data in place and
+reconciled to the current client math, ERP core untouched, nothing pushed.
 
 ## LAST COMPLETED TASK
-Home tile + dashboard (with module fix, refresh-on-return fix, cash/bank fix),
-today's rates (24K 15600 / 22K 14500 / Silver 240 + Silver 999 master), 10+10+10+10
-sample bills/orders/items/stock plus worker/old-gold/repair samples and 10 ERPNext
-Payment Entries lighting up Cash ₹65k / Bank −₹20k.
+Brick A (server totals mirror): `calculations.py` porting the 4 client calc scripts
+exactly (ceil money / round-half-up weights & GST); 4 `validate` hooks wired; sample
+data reconciled (59 docs + 25 JST rows) so stored totals == mirror output (0 mismatches;
+tamper-at-insert restored). Research matrix `docs/FEATURE_MATRIX.md` written.
 
 ## CURRENT UNFINISHED TASK
-Nothing in-flight; all committed except this handoff file. Verification debt (§7 table
-"NOT performed") and §12 Priority 1 (FIFO auto, server mirrors, submit flow, reversals).
+Brick B: switch JST creation to submit-flow + cancellation reversals + backfill the 33
+draft JSTs (see §17). Then Brick C FIFO, D returns, E GST filing, F new reports.
 
 ## NEXT ACTION
-Pick the top of §12 Priority 1 (recommend: FIFO auto-allocation + realized-profit,
-it unlocks the settlement loop the owner asked for first) after reproducing the
-dashboard smoke test.
+Brick B in `stock_hooks.py` + `hooks.py`, then verify with a sample transfer cycle.
 
 ## IMPORTANT WARNINGS
 - `bench migrate` reimports fixtures and SILENTLY reverts unexported DB work.
 - Stock/purchase/sale DocTypes live under module `Jewellery` (Frappe-owned), NOT the
   app's module — do not "fix" without a plan; fixtures are the truth.
 - 6 early draft bills lack `_sample_data` markers (remarks column doesn't exist).
+- Purchase Invoice `gst` is Currency precision=0 (decimal(21,0)): client computes grand
+  from unrounded flt2 GST while the field stores whole rupees — mirror keeps that
+  behaviour; compare that field with ±0.5 tolerance.
 - Never push; never touch `apps/frappe`, `apps/erpnext`, `apps/library_management`.
+
+---
+
+## 17. BRICK TRACKER (owner-approved 5-workstream packet)
+
+Research: `docs/FEATURE_MATRIX.md` maps all 10 competitor products
+(Marg, MMI Jwelly, Ornate, Online Munim, TallyPrime, Synergics, JewelSteps, Akrut,
+ERIONT, GehnaERP) to built / building / V2 / out-of-scope.
+
+- **A. Server totals mirror — ✅ DONE**
+  - `calculations.py` (new): `recalc_sales_invoice`, `recalc_purchase_invoice`,
+    `recalc_order`, `recalc_opening_stock` + pure `compute_*` helpers.
+  - hooks.py: `validate` added for Sales Invoice, Purchase Invoice, Order, Opening Stock.
+  - Verified: 59/59 docs recompute == stored (0 mismatches); tampered totals restored on
+    insert (validate hook fires); old-gold credit autofill/clamp mirrored.
+  - Data migration: reconciled 59 docs + 25 sales/purchase JST rows to current client
+    math (sample-data generator had drifted: 7 invoices stored ₹0, parent weight totals
+    0, floor-rounding, pre-GST legacy docs). Dashboard deltas recorded (sales
+    ₹22,05,905 → ₹22,13,087; purchases ₹33,52,393 → ₹33,66,397; orders-active
+    ₹4,10,460 → ₹21,12,525 — 10 orders had ₹0 stored). Metal/stock-value unchanged.
+  - Rounding contract: money ceil; weights round3 half-up; GST flt2 half-up; purchase
+    `gst` field stores whole rupees (precision 0) but grand uses unrounded GST.
+
+- **B. Stock submit + reversal flow — NEXT**: JST creators `insert()` → `submit()`
+  (purchase/sales/opening/order-transfer); `on_cancel` reversal hooks on source docs;
+  `get_available_stock` filters `docstatus < 2`; backfill 33 draft JSTs to submitted.
+
+- **C. FIFO metal ledger**: realised vs provisional P&L from JST IN/OUT + valuation
+  report (Marg/Ornate/Jwelly style).
+
+- **D. Sales/Purchase Returns** with stock reversal.
+
+- **E. GST filing**: TCS on sales (> threshold), GSTR-1 export, e-invoice JSON payload.
+
+- **F. New reports**: Daily Sales Summary, Supplier Payable, Stock Ageing, Item Rate Card,
+  default GST-rate pre-fill.
