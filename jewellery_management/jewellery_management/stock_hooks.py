@@ -868,3 +868,48 @@ def reverse_stock_transactions(doc, method=None):
             "Jewellery Stock Transaction",
             name,
         ).cancel()
+
+
+_KANBAN_COLUMNS = [
+    ("Advance Received", "Gray"),
+    ("Ordered to Worker", "Blue"),
+    ("Worker Finished", "Orange"),
+    ("Received", "Purple"),
+    ("Delivered", "Green"),
+]
+
+
+def ensure_kanban_board(doc=None, method=None):
+    """
+    Create the Jewellery Order Kanban board if it is missing.
+
+    Hooked as `after_migrate`. The board structure is code-defined here so
+    that `export-fixtures` never pulls live card positions into
+    `fixtures/kanban_board.json` (the old source of the recurring churn).
+    """
+
+    if frappe.db.exists(
+        "Kanban Board",
+        "Jewellery Order Kanban",
+    ):
+        return
+
+    board = frappe.new_doc("Kanban Board")
+    board.update(
+        {
+            "kanban_board_name": "Jewellery Order Kanban",
+            "reference_doctype": "Jewellery Order",
+            "field_name": "order_status",
+            "show_labels": 1,
+            "columns": [
+                {
+                    "column_name": column_name,
+                    "indicator": indicator,
+                    "status": "Active",
+                    "order": "[]",
+                }
+                for column_name, indicator in _KANBAN_COLUMNS
+            ],
+        }
+    )
+    board.insert(ignore_permissions=True)

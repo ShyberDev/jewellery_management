@@ -21,6 +21,8 @@ app_include_js = [
     "/assets/jewellery_management/js/jewellery_kanban.js"
 ]
 
+after_migrate = "jewellery_management.jewellery_management.stock_hooks.ensure_kanban_board"
+
 doc_events = {
     "Jewellery Purchase Invoice": {
         "validate": [
@@ -103,10 +105,6 @@ fixtures = [
     {
         "dt": "Workflow",
         "filters": [["document_type", "like", "Jewellery%"]],
-    },
-    {
-        "dt": "Kanban Board",
-        "filters": [["reference_doctype", "like", "Jewellery%"]],
     },
     {
         "dt": "Custom Field",
