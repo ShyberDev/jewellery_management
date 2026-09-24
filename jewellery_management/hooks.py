@@ -23,6 +23,8 @@ app_include_js = [
 
 after_migrate = "jewellery_management.jewellery_management.stock_hooks.ensure_kanban_board"
 
+boot_session = "jewellery_management.jewellery_management.calculations.add_boot_settings"
+
 doc_events = {
     "Jewellery Purchase Invoice": {
         "validate": [

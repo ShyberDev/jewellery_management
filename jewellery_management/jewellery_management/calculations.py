@@ -128,6 +128,8 @@ def compute_sales_summary(doc):
     balance_amount = max(0, grand_total - total_paid)
     balance_amount = ceil_money(balance_amount)
 
+    tcs_amount = _compute_tcs_amount(doc, grand_total)
+
     return {
         "gross_total_weight": gross_total_weight,
         "net_total_weight": net_total_weight,
@@ -138,9 +140,43 @@ def compute_sales_summary(doc):
         "gst_amount": gst_amount,
         "old_gold_credit": old_gold_credit,
         "grand_total": grand_total,
+        "tcs_amount": tcs_amount,
         "total_paid": total_paid,
         "balance_amount": balance_amount,
     }
+
+
+def _compute_tcs_amount(doc, grand_total):
+    """
+    TCS on sales above a threshold (settings-driven, default 0.1% above
+    5,00,000 as per 206C(1H) style collection). Whole-rupee (ceil).
+
+    Mirrors the client-side calculate_sales(): a return (negative-bill)
+    invoice never carries TCS.
+    """
+
+    if flt(grand_total) <= 0:
+        return 0.0
+
+    try:
+        settings = frappe.get_doc("Jewellery Settings")
+        threshold = flt(settings.get("tcs_threshold"))
+        if threshold <= 0:
+            threshold = 500000
+        rate = flt(settings.get("tcs_rate"))
+        if rate <= 0:
+            rate = 0.1
+    except Exception:
+        threshold = 500000
+        rate = 0.1
+
+    if flt(grand_total) < threshold:
+        return 0.0
+
+    # Allow per-invoice override via the linked field if the user set it.
+    rate = flt(doc.get("tcs_rate")) or rate
+
+    return ceil_money(flt(grand_total) * rate / 100)
 
 
 def _autofill_old_gold_credit(doc):
@@ -497,3 +533,14 @@ def recalc_order(doc, method=None):
     summary = compute_order_summary(doc)
     for field, value in summary.items():
         doc.set(field, value)
+
+def add_boot_settings(bootinfo):
+    """
+    Inject Jewellery Settings into frappe.boot so the client-side sales
+    calculator can mirror the server TCS threshold/rate without an extra
+    round-trip.
+    """
+
+    settings = frappe.get_doc("Jewellery Settings")
+    bootinfo.jewellery_settings_tcs_threshold = flt(settings.get("tcs_threshold")) or 500000
+    bootinfo.jewellery_settings_tcs_rate = flt(settings.get("tcs_rate")) or 0.1
