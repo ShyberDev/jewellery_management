@@ -431,21 +431,28 @@ Plus two desk apps (session 2): **Money Lending** (frappe/lending) and custom
 6 reports and combined 3-business accounting — see §18.
 
 ## LAST COMPLETED TASK
-Bricks D/E/F complete. D: Sales/Purchase Returns with stock reversal (commit
-`a8f6371`). E: TCS on sales over threshold + GSTR-1 export + e-invoice payload
-(`gst.py`, commit `287b872`). F: 4 new Script Reports (Daily Sales Summary,
-Supplier Payable, Jewellery Stock Ageing, Item Rate Card) + default GST-rate
-pre-fill (commit `287b872`). Kanban board made code-defined (`9922ca8`).
+Desk sidebar / app-context fix for the two new apps (owner-reported gray +
+missing sidebar): marked Jewellery/Lending/Pawn workspaces `standard=1` with
+valid lucide icons, and authored a 20-item sidebar on the Lending workspace
+(§18.6). Pawn `624ec85`, Jewellery `d315e29`, Lending `f13f68e` (all local).
+Before that: Bricks D/E/F complete. D: Sales/Purchase Returns with stock
+reversal (commit `a8f6371`). E: TCS on sales over threshold + GSTR-1 export +
+e-invoice payload (`gst.py`, commit `287b872`). F: 4 new Script Reports (Daily
+Sales Summary, Supplier Payable, Jewellery Stock Ageing, Item Rate Card) +
+default GST-rate pre-fill (commit `287b872`). Kanban board made code-defined
+(`9922ca8`).
 
 ## CURRENT UNFINISHED TASK
 None — both requested desk apps are installed and verified. Awaiting owner's
 modification/improvement list before any further work (see §18 for details).
 
 ## NEXT ACTION
-Owner verifies in the desk (`/desk`): apps screen shows **Lending** and **Pawn Shop**;
-left workspace rail shows **Jewellery**, **Lending**, **Pawn** (pinned for both
-Administrator and `shyamsailolugu@gmail.com`). Then owner dictates changes.
-Do NOT push to GitHub. Do NOT re-run `sync_for(force=True)` on pawn_shop (see §18 warning).
+Owner **hard-refreshes** the browser (boot payload is cached per page load) and
+verifies in the desk (`/desk`): apps screen shows **Lending** and **Pawn Shop**;
+left workspace rail shows **Jewellery**, **Lending**, **Pawn** with coloured app
+icons (not gray) and the header shows the app/module name. Then owner dictates
+changes. Do NOT push to GitHub. Do NOT re-run `sync_for(force=True)` on pawn_shop
+(see §18 warning).
 
 ## IMPORTANT WARNINGS
 - `bench migrate` reimports fixtures and SILENTLY reverts unexported DB work.
@@ -679,3 +686,48 @@ skips the import by timestamp, so it is safe. **After any forced sync, regenerat
 `apps/pawn_shop/pawn_shop/pawn_shop/workspace/pawn/pawn.json`** (generator
 `/tmp/opencode/gen_pawn_workspace.py`) before committing. The same applies to any
 app-shipped workspace.
+
+### 18.6 Desk sidebar / app-context fix (owner-reported: gray + missing sidebar)
+Owner reported the desk "not loading properly", no sidebar module information,
+and a gray screen when switching Pawn → Lending. Root causes and fixes:
+
+1. **Workspaces were not `standard`.** `frappe.current_app` and
+   `Sidebar.get_sidebar_app()` both treat a non-standard workspace as app-less
+   (`workspace && !workspace.standard ? null : ...`). Result: the sidebar header
+   showed the session user instead of the app/module name, and the workspace dock
+   lost its app logo. Fix: set `standard: 1` (and correct `app`) on **Jewellery**,
+   **Lending**, **Pawn**. Jewellery `app` was also null → set to
+   `jewellery_management`.
+2. **Invalid workspace icons.** Workspace `icon` must be a bare lucide symbol
+   name (no `icon-` prefix, must exist in
+   `apps/frappe/frappe/public/icons/lucide/icons.svg`). `assets` (Pawn) and
+   `loan` (Lending) do not exist → the dock/header rendered a blank gray
+   `<use href="#icon-...">`. Fix: Pawn → `hand-coins`, Lending → `banknote`,
+   Jewellery → `gem`.
+3. **Lending had no authored sidebar.** `bootinfo.workspace_sidebar_item` is
+   keyed by **workspace title lowercased**. Lending had no `sidebar_items`, so
+   there was no `["lending"]` entry; `/app/lending` hit the `catch` in
+   `Sidebar.prepare()` and rendered "No Sidebar Items" (the gray page). Fix:
+   authored 20 `sidebar_items` on the Lending workspace (Home / Loan Management /
+   Loan Origination / Reports) with `default_workspace=1`, saved through the ORM
+   (dev mode auto-exported `apps/lending/.../workspace/lending/lending.json`).
+   The module-keyed fallback (`loan management`) is now gone; every lending
+   entity resolves to the `Lending` workspace via `default_workspace_map`.
+
+Files changed (committed locally, never pushed):
+- `apps/pawn_shop/pawn_shop/pawn_shop/workspace/pawn/pawn.json` (branch `develop`)
+- `apps/jewellery_management/jewellery_management/fixtures/workspace.json`
+  (branch `opencode/v1-complete-erp`; exported via
+  `bench --site library.local export-fixtures --app jewellery_management`)
+- `apps/lending/lending/loan_management/workspace/lending/lending.json`
+  (lending is a third-party app — this is a local patch; a future
+  `bench get-app`/`git pull` of lending would drop it, but a normal
+  `bench migrate` will not, because sync skips by timestamp.)
+
+Verification: `bootinfo.app_data` now groups each workspace under its own app
+(`jewellery_management`/`lending`/`pawn_shop`); `workspace_sidebar_item` has
+`jewellery` (27), `lending` (20), `pawn` (20) items; all three icons validate
+against the lucide sprite; `default_workspace_map` routes lending + pawn +
+jewellery entities correctly. Desk routes `/app/pawn`, `/app/lending`,
+`/app/jewellery` → HTTP 200. **Owner must hard-refresh the browser** (the boot
+payload is cached per page load).
