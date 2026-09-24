@@ -381,14 +381,14 @@ for bank legs); village-wise analytics.
    `.../jewellery_management/{calculations,stock_hooks,settlement,old_gold,dashboard}.py`,
    `fixtures/doctype.json` (source of truth for schema), open `Page: jewellery-dashboard`.
 4. Never run `migrate` with unexported DB changes (§10.4). Never push.
-5. Continue from §17 Brick B (stock submit + reversal flow).
+5. Continue from §17 Brick C (FIFO metal ledger + valuation report).
 
 ---
 
 ## 14. GIT STATE
 
 - Current branch: `opencode/v1-complete-erp`
-- Current commit: Brick A commit (see log; was `b1a18c5` before this session)
+- Current commit: Brick B commit (Brick A was `c66290f`)
 - Remote: `https://github.com/ShyberDev/jewellery_management.git` (push NOT performed; remote state NOT VERIFIED)
 - Working tree: CLEAN after Brick A commit. `docs/AI_HANDOFF.md` is now tracked (updated in-session).
 
@@ -422,17 +422,20 @@ fixture-versioned on `opencode/v1-complete-erp`, tree clean, sample data in plac
 reconciled to the current client math, ERP core untouched, nothing pushed.
 
 ## LAST COMPLETED TASK
-Brick A (server totals mirror): `calculations.py` porting the 4 client calc scripts
-exactly (ceil money / round-half-up weights & GST); 4 `validate` hooks wired; sample
-data reconciled (59 docs + 25 JST rows) so stored totals == mirror output (0 mismatches;
-tamper-at-insert restored). Research matrix `docs/FEATURE_MATRIX.md` written.
+Brick B (stock submit + reversal flow): all JST creators submit; `on_cancel` /
+`on_trash` reversal hooks cancel linked JSTs (sales, purchase, opening, order transfer);
+`get_available_stock` counts submitted-only; 31 draft JSTs backfilled + 2 legacy orphans
+deleted; full submit→cancel cycles verified for all 4 source DocTypes. Discovered
+`before_delete` doc_events never fire in Frappe — the old kanban hook was dead and is
+now on `on_trash`. Brick A mirror untouched (0 regressions).
 
 ## CURRENT UNFINISHED TASK
-Brick B: switch JST creation to submit-flow + cancellation reversals + backfill the 33
-draft JSTs (see §17). Then Brick C FIFO, D returns, E GST filing, F new reports.
+Brick C: FIFO metal ledger — realised vs provisional P&L from JST IN/OUT + valuation
+report (Marg/Ornate/Jwelly style). Then Brick D returns, E GST filing, F reports.
 
 ## NEXT ACTION
-Brick B in `stock_hooks.py` + `hooks.py`, then verify with a sample transfer cycle.
+Brick C in a new `fifo.py` + valuation report, verified against sample JST history
+(now fully submitted, docstatus 1 — the Brick B prerequisite).
 
 ## IMPORTANT WARNINGS
 - `bench migrate` reimports fixtures and SILENTLY reverts unexported DB work.
@@ -466,9 +469,29 @@ ERIONT, GehnaERP) to built / building / V2 / out-of-scope.
   - Rounding contract: money ceil; weights round3 half-up; GST flt2 half-up; purchase
     `gst` field stores whole rupees (precision 0) but grand uses unrounded GST.
 
-- **B. Stock submit + reversal flow — NEXT**: JST creators `insert()` → `submit()`
-  (purchase/sales/opening/order-transfer); `on_cancel` reversal hooks on source docs;
-  `get_available_stock` filters `docstatus < 2`; backfill 33 draft JSTs to submitted.
+- **B. Stock submit + reversal flow — ✅ DONE**
+  - `stock_hooks.py`: all 4 JST creators now `submit()` (purchase/sales/opening/
+    order-transfer); `get_available_stock` reads `docstatus=1` only; all "existing"
+    duplicate checks exclude cancelled rows (`docstatus < 2`); new
+    `reverse_stock_transactions` cancels every live JST linked to a source doc.
+  - hooks.py: `on_cancel` wired for Sales Invoice, Purchase Invoice, Opening Stock;
+    `Jewellery Order` uses `on_trash` (list: `remove_order_from_kanban` +
+    `reverse_stock_transactions`) — **frappe never dispatches `before_delete`**
+    (verified in `apps/frappe/frappe/model/delete_doc.py`: only `on_trash` /
+    `after_delete` run), so the pre-existing kanban hook on `before_delete` was dead and
+    moved to `on_trash` where it actually fires.
+  - Backfill: 31 of 33 draft JSTs submitted; **2 legacy orphans DELETED**
+    (`JST-2026-08-17-01` referenced the CANCELLED `JSI-2026-08-17-01`; `JST-DDMMYY-001`
+    referenced the MISSING `JPI-2026-00006`). Drafts cannot be cancelled (docstatus
+    0→2 invalid), so deletion is the only valid cleanup for never-submitted orphans.
+  - Verified cycles (scratch docs, fully cleaned up): sales submit→cancel restores
+    stock + cancels JST (RSI-0014 silver 550→549→550); purchase submit→cancel likewise
+    60→180→60; order transfer (JWO copy) delete cancels both transfer JSTs (22.22→33.33
+    →22.22→restored). Dashboard metals corrected by the orphan cleanup: gold_22k
+    100.5→**95.5**g, gold_total 116.11→**111.11**g, stock_value ₹19,67,316→**₹18,89,316**
+    (= −5g×₹15,600 exactly); 18K 15.61g / silver 650g unchanged. Counts after: Sales 22,
+    Purchase 18, Order 18, JST 31 (1 Opening + 5 Order Transfer + 13 Purchase + 12 Sale,
+    all docstatus 1).
 
 - **C. FIFO metal ledger**: realised vs provisional P&L from JST IN/OUT + valuation
   report (Marg/Ornate/Jwelly style).

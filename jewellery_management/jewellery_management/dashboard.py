@@ -72,8 +72,7 @@ def get_data(from_date: str, to_date: str) -> dict:
            WHERE docstatus=1 AND (melt_reference IS NULL OR melt_reference='')"""
     )[0]
 
-    # current stock per bucket (custom ledger posts as draft rows;
-    # submitted-only would read zero, so count all non-cancelled)
+    # current stock per bucket (ledger rows are submitted; cancels excluded)
     purities = {
         p.name: (p.purity_name, p.metal, flt(p.purity_))
         for p in frappe.get_all(

@@ -25,21 +25,27 @@ doc_events = {
     "Jewellery Purchase Invoice": {
         "validate": "jewellery_management.jewellery_management.calculations.recalc_purchase_invoice",
         "on_submit": "jewellery_management.jewellery_management.stock_hooks.create_purchase_stock_transactions",
+        "on_cancel": "jewellery_management.jewellery_management.stock_hooks.reverse_stock_transactions",
     },
 
     "Jewellery Sales Invoice": {
         "validate": "jewellery_management.jewellery_management.calculations.recalc_sales_invoice",
         "on_submit": "jewellery_management.jewellery_management.stock_hooks.create_sales_stock_transactions",
+        "on_cancel": "jewellery_management.jewellery_management.stock_hooks.reverse_stock_transactions",
     },
 
     "Jewellery Opening Stock": {
         "validate": "jewellery_management.jewellery_management.calculations.recalc_opening_stock",
         "on_submit": "jewellery_management.jewellery_management.stock_hooks.create_opening_stock_transactions",
+        "on_cancel": "jewellery_management.jewellery_management.stock_hooks.reverse_stock_transactions",
     },
 
     "Jewellery Order": {
         "validate": "jewellery_management.jewellery_management.calculations.recalc_order",
-        "before_delete": "jewellery_management.jewellery_management.stock_hooks.remove_order_from_kanban",
+        "on_trash": [
+            "jewellery_management.jewellery_management.stock_hooks.remove_order_from_kanban",
+            "jewellery_management.jewellery_management.stock_hooks.reverse_stock_transactions",
+        ],
     },
 
     "Worker Settlement": {

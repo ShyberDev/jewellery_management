@@ -15,6 +15,7 @@ def get_available_stock(retail_stock_item, purity):
         filters={
             "retail_stock_item": retail_stock_item,
             "purity": purity,
+            "docstatus": 1,  # submitted only; drafts/cancels never count
         },
         fields=["movement", "weight"],
     )
@@ -100,6 +101,7 @@ def create_purchase_stock_transactions(doc, method=None):
             "reference_type": "Jewellery Purchase Invoice",
             "reference_no": doc.name,
             "transaction_type": "Purchase",
+            "docstatus": ["<", 2],
         },
     )
 
@@ -151,9 +153,7 @@ def create_purchase_stock_transactions(doc, method=None):
         stock_transaction.rate_24k = row.rate_24k
         stock_transaction.stock_value = row.total_amount
 
-        stock_transaction.insert(
-            ignore_permissions=True
-        )
+        stock_transaction.submit()
 
 
 def create_sales_stock_transactions(doc, method=None):
@@ -170,6 +170,7 @@ def create_sales_stock_transactions(doc, method=None):
             "reference_type": "Jewellery Sales Invoice",
             "reference_no": doc.name,
             "transaction_type": "Sale",
+            "docstatus": ["<", 2],
         },
     )
 
@@ -221,9 +222,7 @@ def create_sales_stock_transactions(doc, method=None):
         stock_transaction.rate_24k = row.rate_24k
         stock_transaction.stock_value = row.total_amount
 
-        stock_transaction.insert(
-            ignore_permissions=True
-        )
+        stock_transaction.submit()
 
 
 def create_opening_stock_transactions(doc, method=None):
@@ -237,6 +236,7 @@ def create_opening_stock_transactions(doc, method=None):
             "reference_type": "Jewellery Opening Stock",
             "reference_no": doc.name,
             "transaction_type": "Opening Stock",
+            "docstatus": ["<", 2],
         },
     )
 
@@ -285,9 +285,7 @@ def create_opening_stock_transactions(doc, method=None):
             weight * flt(row.rate)
         )
 
-        stock_transaction.insert(
-            ignore_permissions=True
-        )
+        stock_transaction.submit()
 
 
 def get_order_stock_item_candidates(item_name, material, purity):
@@ -572,6 +570,7 @@ def send_items_to_retail_stock(
                 "item": row.item_name,
                 "retail_stock_item": retail_stock_item,
                 "movement": "In",
+                "docstatus": ["<", 2],
             },
         )
 
@@ -631,9 +630,7 @@ def send_items_to_retail_stock(
             row.purity
         )
 
-        stock_transaction.insert(
-            ignore_permissions=True
-        )
+        stock_transaction.submit()
 
         row.retail_stock_item = (
             retail_stock_item
@@ -721,3 +718,53 @@ def remove_order_from_kanban(doc, method=None):
                 json.dumps(orders),
                 update_modified=False,
             )
+
+
+_REFERENCE_TRANSACTION_TYPES = {
+    "Jewellery Sales Invoice": "Sale",
+    "Jewellery Purchase Invoice": "Purchase",
+    "Jewellery Opening Stock": "Opening Stock",
+    "Jewellery Order": "Order Transfer",
+}
+
+
+def reverse_stock_transactions(doc, method=None):
+    """
+    Cancel every live (non-cancelled) stock transaction linked to a source
+    document.
+
+    Wired as:
+    - on_cancel  for Jewellery Sales/Purchase Invoice, Opening Stock
+    - on_trash   for Jewellery Order (order-transfer stock IN)
+
+    Note: Frappe never dispatches a `before_delete` doc event; `delete_doc`
+    only runs `on_trash` / `after_delete`, so Orders use `on_trash`.
+
+    Cancelling the stock transaction reverses its movement, so the
+    dashboard / get_available_stock balance returns to the pre-transaction
+    state through ordinary ledger arithmetic.
+    """
+
+    transaction_type = _REFERENCE_TRANSACTION_TYPES.get(
+        doc.doctype
+    )
+
+    if not transaction_type:
+        return
+
+    names = frappe.get_all(
+        "Jewellery Stock Transaction",
+        filters={
+            "reference_type": doc.doctype,
+            "reference_no": doc.name,
+            "transaction_type": transaction_type,
+            "docstatus": ["<", 2],
+        },
+        pluck="name",
+    )
+
+    for name in names:
+        frappe.get_doc(
+            "Jewellery Stock Transaction",
+            name,
+        ).cancel()
