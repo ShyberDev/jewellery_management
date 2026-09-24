@@ -4,6 +4,71 @@ import frappe
 from frappe.utils import flt
 
 
+def _is_return(doc):
+    """
+    True when the document is a return (reversal) invoice.
+    Only Sales/Purchase invoices can be returns.
+    """
+    if doc.doctype not in (
+        "Jewellery Sales Invoice",
+        "Jewellery Purchase Invoice",
+    ):
+        return False
+    return flt(doc.get("is_return")) == 1
+
+
+def validate_return(doc, method=None):
+    """
+    Return-invoice rules (wired as a validate hook):
+
+    - is_return=1 requires a submitted Return Against; cannot self-reference.
+    - Return items must carry NEGATIVE weights (ERPNext-style reversal).
+    - A normal invoice cannot carry a Return Against.
+
+    The totals mirror in ``calculations.py`` is sign-agnostic (ceil over
+    signed rows), so returns offset the original invoice's amounts and GST
+    automatically; only stock direction flips (see the JST creators).
+    """
+
+    if _is_return(doc):
+
+        return_against = doc.get("return_against")
+
+        if not return_against:
+            frappe.throw(
+                "Return Against is required on a return invoice "
+                "(the original invoice being returned)."
+            )
+
+        if return_against == doc.name:
+            frappe.throw(
+                "Return Against cannot be the invoice itself."
+            )
+
+        original_status = frappe.db.get_value(
+            doc.doctype,
+            return_against,
+            "docstatus",
+        )
+
+        if original_status != 1:
+            frappe.throw(
+                "Return Against must be a SUBMITTED invoice "
+                "(not draft or cancelled)."
+            )
+
+        for row in doc.items:
+            if flt(row.gross_weight) >= 0 and flt(row.net_weight) >= 0:
+                frappe.throw(
+                    f"Return item {row.idx} must carry a negative weight."
+                )
+
+    elif doc.get("return_against"):
+        frappe.throw(
+            "Return Against must be empty on a normal (non-return) invoice."
+        )
+
+
 def get_available_stock(retail_stock_item, purity):
     """
     Current physical stock for:
@@ -92,15 +157,20 @@ def validate_sales_stock(doc):
 
 def create_purchase_stock_transactions(doc, method=None):
     """
-    Create Stock IN transactions from Jewellery Purchase Invoice.
+    Create Stock IN transactions from Jewellery Purchase Invoice,
+    or Stock OUT transactions from a Purchase Return (is_return=1).
     """
+
+    is_return = _is_return(doc)
+    transaction_type = "Purchase Return" if is_return else "Purchase"
+    movement = "Out" if is_return else "In"
 
     existing = frappe.db.exists(
         "Jewellery Stock Transaction",
         {
             "reference_type": "Jewellery Purchase Invoice",
             "reference_no": doc.name,
-            "transaction_type": "Purchase",
+            "transaction_type": transaction_type,
             "docstatus": ["<", 2],
         },
     )
@@ -123,7 +193,16 @@ def create_purchase_stock_transactions(doc, method=None):
         if stock_weight <= 0:
             stock_weight = flt(row.net_weight)
 
-        if stock_weight <= 0:
+        if is_return:
+
+            if stock_weight >= 0:
+                frappe.throw(
+                    f"Return item {row.idx} must carry a negative weight."
+                )
+
+            stock_weight = abs(stock_weight)
+
+        elif stock_weight <= 0:
             continue
 
         stock_transaction = frappe.new_doc(
@@ -131,7 +210,7 @@ def create_purchase_stock_transactions(doc, method=None):
         )
 
         stock_transaction.transaction_date = doc.purchase_date
-        stock_transaction.transaction_type = "Purchase"
+        stock_transaction.transaction_type = transaction_type
         stock_transaction.reference_type = (
             "Jewellery Purchase Invoice"
         )
@@ -140,7 +219,7 @@ def create_purchase_stock_transactions(doc, method=None):
         stock_transaction.item = row.item_name
         stock_transaction.retail_stock_item = row.retail_stock_item
         stock_transaction.weight = stock_weight
-        stock_transaction.movement = "In"
+        stock_transaction.movement = movement
 
         stock_transaction.purity = row.purity
         stock_transaction.purity_percentage = (
@@ -158,18 +237,23 @@ def create_purchase_stock_transactions(doc, method=None):
 
 def create_sales_stock_transactions(doc, method=None):
     """
-    Validate stock and create Stock OUT transactions
-    from Jewellery Sales Invoice.
+    Create Stock OUT transactions from Jewellery Sales Invoice,
+    or Stock IN transactions from a Sales Return (is_return=1).
     """
 
-    validate_sales_stock(doc)
+    is_return = _is_return(doc)
+    transaction_type = "Sale Return" if is_return else "Sale"
+    movement = "In" if is_return else "Out"
+
+    if not is_return:
+        validate_sales_stock(doc)
 
     existing = frappe.db.exists(
         "Jewellery Stock Transaction",
         {
             "reference_type": "Jewellery Sales Invoice",
             "reference_no": doc.name,
-            "transaction_type": "Sale",
+            "transaction_type": transaction_type,
             "docstatus": ["<", 2],
         },
     )
@@ -192,7 +276,16 @@ def create_sales_stock_transactions(doc, method=None):
         if stock_weight <= 0:
             stock_weight = flt(row.net_weight)
 
-        if stock_weight <= 0:
+        if is_return:
+
+            if stock_weight >= 0:
+                frappe.throw(
+                    f"Return item {row.idx} must carry a negative weight."
+                )
+
+            stock_weight = abs(stock_weight)
+
+        elif stock_weight <= 0:
             continue
 
         stock_transaction = frappe.new_doc(
@@ -200,7 +293,7 @@ def create_sales_stock_transactions(doc, method=None):
         )
 
         stock_transaction.transaction_date = doc.sales_date
-        stock_transaction.transaction_type = "Sale"
+        stock_transaction.transaction_type = transaction_type
         stock_transaction.reference_type = (
             "Jewellery Sales Invoice"
         )
@@ -209,7 +302,7 @@ def create_sales_stock_transactions(doc, method=None):
         stock_transaction.item = row.item_name
         stock_transaction.retail_stock_item = row.retail_stock_item
         stock_transaction.weight = stock_weight
-        stock_transaction.movement = "Out"
+        stock_transaction.movement = movement
 
         stock_transaction.purity = row.purity
         stock_transaction.purity_percentage = (
@@ -751,6 +844,13 @@ def reverse_stock_transactions(doc, method=None):
 
     if not transaction_type:
         return
+
+    if _is_return(doc):
+        transaction_type = (
+            "Sale Return"
+            if doc.doctype == "Jewellery Sales Invoice"
+            else "Purchase Return"
+        )
 
     names = frappe.get_all(
         "Jewellery Stock Transaction",

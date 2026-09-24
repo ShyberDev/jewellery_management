@@ -114,7 +114,12 @@ def compute_sales_summary(doc):
 
     old_gold_credit = flt(doc.get("old_gold_credit"))
     max_credit = subtotal + gst_amount
-    if old_gold_credit > max_credit:
+    if max_credit <= 0:
+        # return (negative-bill) invoices can never carry an old-gold
+        # credit; without this guard the clamp below would set the credit
+        # to the negative max and zero out grand_total.
+        old_gold_credit = 0
+    elif old_gold_credit > max_credit:
         old_gold_credit = flt2(max_credit)
 
     grand_total = ceil_money(subtotal + gst_amount - old_gold_credit)

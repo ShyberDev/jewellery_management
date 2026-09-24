@@ -23,13 +23,19 @@ app_include_js = [
 
 doc_events = {
     "Jewellery Purchase Invoice": {
-        "validate": "jewellery_management.jewellery_management.calculations.recalc_purchase_invoice",
+        "validate": [
+            "jewellery_management.jewellery_management.calculations.recalc_purchase_invoice",
+            "jewellery_management.jewellery_management.stock_hooks.validate_return",
+        ],
         "on_submit": "jewellery_management.jewellery_management.stock_hooks.create_purchase_stock_transactions",
         "on_cancel": "jewellery_management.jewellery_management.stock_hooks.reverse_stock_transactions",
     },
 
     "Jewellery Sales Invoice": {
-        "validate": "jewellery_management.jewellery_management.calculations.recalc_sales_invoice",
+        "validate": [
+            "jewellery_management.jewellery_management.calculations.recalc_sales_invoice",
+            "jewellery_management.jewellery_management.stock_hooks.validate_return",
+        ],
         "on_submit": "jewellery_management.jewellery_management.stock_hooks.create_sales_stock_transactions",
         "on_cancel": "jewellery_management.jewellery_management.stock_hooks.reverse_stock_transactions",
     },
