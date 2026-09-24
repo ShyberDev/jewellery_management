@@ -381,16 +381,16 @@ for bank legs); village-wise analytics.
    `.../jewellery_management/{calculations,stock_hooks,settlement,old_gold,dashboard}.py`,
    `fixtures/doctype.json` (source of truth for schema), open `Page: jewellery-dashboard`.
 4. Never run `migrate` with unexported DB changes (§10.4). Never push.
-5. Continue from §17 Brick C (FIFO metal ledger + valuation report).
+5. Continue from §17 Brick D (sales/purchase returns with stock reversal).
 
 ---
 
 ## 14. GIT STATE
 
 - Current branch: `opencode/v1-complete-erp`
-- Current commit: Brick B commit (Brick A was `c66290f`)
+- Current commit: Brick C commit (Brick B was `60b0825`, Brick A `c66290f`)
 - Remote: `https://github.com/ShyberDev/jewellery_management.git` (push NOT performed; remote state NOT VERIFIED)
-- Working tree: CLEAN after Brick A commit. `docs/AI_HANDOFF.md` is now tracked (updated in-session).
+- Working tree: CLEAN after Brick C commit. `docs/AI_HANDOFF.md` is tracked (updated in-session each brick).
 
 ---
 
@@ -422,20 +422,23 @@ fixture-versioned on `opencode/v1-complete-erp`, tree clean, sample data in plac
 reconciled to the current client math, ERP core untouched, nothing pushed.
 
 ## LAST COMPLETED TASK
-Brick B (stock submit + reversal flow): all JST creators submit; `on_cancel` /
-`on_trash` reversal hooks cancel linked JSTs (sales, purchase, opening, order transfer);
-`get_available_stock` counts submitted-only; 31 draft JSTs backfilled + 2 legacy orphans
-deleted; full submit→cancel cycles verified for all 4 source DocTypes. Discovered
-`before_delete` doc_events never fire in Frappe — the old kanban hook was dead and is
-now on `on_trash`. Brick A mirror untouched (0 regressions).
+Brick C (FIFO metal ledger): new `fifo.py` runs FIFO over the submitted JST ledger
+per (Retail Stock Item, Purity) bucket — IN rows open lots, OUT rows consume oldest
+lot first; realised P&L = OUT stock_value − FIFO cost; book value = open lots at
+purchase cost; provisional P&L = open × (current metal rate − lot rate). Standard
+Script Report "FIFO Metal Ledger" (file-defined under module "Jewellery Management",
+13 columns + bucket/grand totals) with as_of / item / purity filters. Verified:
+per-bucket open == `get_available_stock`; gold 111.11g / silver 650g; book+provisional
+== ₹18,89,316 exactly (== dashboard stock_value); realised ₹1,43,484 line-checked.
 
 ## CURRENT UNFINISHED TASK
-Brick C: FIFO metal ledger — realised vs provisional P&L from JST IN/OUT + valuation
-report (Marg/Ornate/Jwelly style). Then Brick D returns, E GST filing, F reports.
+Brick D: Sales/Purchase Returns with stock reversal (return JSTs or reversed
+movements, RMA-ish flow). Then Brick E (e-invoice/TCS/GSTR-1) and Brick F (reports).
 
 ## NEXT ACTION
-Brick C in a new `fifo.py` + valuation report, verified against sample JST history
-(now fully submitted, docstatus 1 — the Brick B prerequisite).
+Brick D — decide return semantics (counter-entry JST vs negative movements;
+purchase return returns metal to supplier, sales return takes metal back), then
+implement + verify a sample return cycle end-to-end.
 
 ## IMPORTANT WARNINGS
 - `bench migrate` reimports fixtures and SILENTLY reverts unexported DB work.
@@ -493,8 +496,34 @@ ERIONT, GehnaERP) to built / building / V2 / out-of-scope.
     Purchase 18, Order 18, JST 31 (1 Opening + 5 Order Transfer + 13 Purchase + 12 Sale,
     all docstatus 1).
 
-- **C. FIFO metal ledger**: realised vs provisional P&L from JST IN/OUT + valuation
-  report (Marg/Ornate/Jwelly style).
+- **C. FIFO metal ledger — ✅ DONE**
+  - `fifo.py` (new): submitted-JST FIFO per (Retail Stock Item, Purity) bucket —
+    IN rows open lots, OUT rows consume oldest lot first. Cost basis = JST
+    `rate_24k` per GROSS gram WITHOUT purity adjustment, deliberately matching
+    the shop's invoice/dashboard convention (one rate per gram regardless of
+    alloy). Realised P&L per OUT = OUT stock_value − FIFO cost of consumed
+    grams; book value = open lots at purchase cost; provisional P&L = open
+    weight × (current metal rate − lot rate). Current rates from `tabMetal
+    Rate` (latest rate_date, active=1 — same rule as the dashboard).
+  - **Script Report "FIFO Metal Ledger"** (13 columns: lot register with
+    weight/rate/metal value/doc value/lot rate/FIFO cost/realised/balance +
+    bucket totals + grand total). File-defined standard report under module
+    **"Jewellery Management"** (NOT "Jewellery" — that module maps to the
+    frappe app, and `get_report_module_dotted_path` would resolve to
+    `frappe.jewellery.report…`; the app-own module resolves to
+    `jewellery_management.jewellery_management.report…`). DB row inserted
+    directly (no full `migrate`); not captured by the Report fixture filter
+    (module=Jewellery) — the file is the source of truth.
+  - Verified identities (sample data, all pass): per-bucket open weight ==
+    `get_available_stock`; gold open 111.11g / silver 650g (== dashboard
+    metals); book+provisional == 18,89,316 exactly (== dashboard stock_value);
+    realised total 1,43,484 == Σ per-sale gross margin over FIFO metal cost
+    (double-checked line by line); as_of cut-off works (RSI-0001 at
+    2026-08-20 → 12g open, 0 realised); bucket/purity filters work.
+  - Ledger design notes: order-transfer OUT rows pair with zero-rate transfer
+    IN lots (net-to-zero realised) — keep transfer INs before any external OUT
+    on the same bucket. Drafts/cancels excluded (docstatus=1 only). Rounding:
+    weights half-up 3dp, money half-up 2dp (Decimal, never Python round).
 
 - **D. Sales/Purchase Returns** with stock reversal.
 
